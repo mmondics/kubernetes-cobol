@@ -15,7 +15,7 @@ When you have completed this code pattern, you will understand how to:
 3. [Build your COBOL container](#3-build-your-cobol-container)
 4. [Push your COBOL container to the OpenShift on IBM Z internal registry](#4-push-your-cobol-container-to-the-openshift-on-ibm-z-internal-registry)
 5. [Run a batch job on OpenShift on IBM Z](#5-Run-a-batch-job-on-OpenShift-on-IBM-Z)
-6. [(Optional) Use a shell script to do the full installation]()
+6. [(Optional) Use a shell script to do the full installation](#6-use-a-shell-script-to-do-the-full-installation)
 
 **NOTE**: If you simply want to get the COBOL application up and running on OpenShift on IBM Z quickly without going through each step manually, a shell script is included in this repository to do it for you. For directions on how to use it, skip to Step 6
 
