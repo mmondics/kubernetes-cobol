@@ -17,15 +17,13 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: cobol-docker-job
+  name: openshift-cobol-job
   labels:
-    app: cobol-docker
+    app: openshift-cobol
 spec:
   template:
     spec:
       containers:
       - name: cobol-hello-world
-        image: us.icr.io/docker_cobol/hello_world:v1
+        image: image-registry.openshift-image-registry.svc:5000/<OPENSHIFT_PROJECT>/openshift-cobol:v1.0.0
       restartPolicy: Never
-      imagePullSecrets:
-        - name: docker-cobol-registry-secret
