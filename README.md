@@ -1,214 +1,152 @@
+# Running COBOL on OpenShift on IBM Z
 
-[![Build Status](https://travis-ci.org/IBM/kubernetes-cobol.svg?branch=master)](https://travis-ci.org/IBM/kubernetes-cobol)
-
-# Running COBOL on a Kubernetes cluster
-
-In this code pattern, we will build a Docker container with a simple hello world COBOL application using Kubernetes and Docker. We will build a Docker container locally, test it, push it to a registry, then pull it down to a remote Kubernetes cluster expecting our output.
+In this code pattern, we will build a container with a simple hello world COBOL application using OpenShift, Buildah, and Podman. We will build a container locally, push it to the internal OpenShift on IBM Z registry, then run create a batch job that runs the COBOL application in a pod.
 
 When you have completed this code pattern, you will understand how to:
 
-* Build Docker containers locally
-* Test a basic Docker container
-* Push a Docker container to a remote registry
-* Configure Kubernetes to pull from a remote registry and run a COBOL Hello World Application
+* Build containers locally
+* Push a container to the OpenShift internal registry
+* Run the container as a pod in the OpenShift on IBM Z cluster
 
 # Steps
 
-1. [Install Docker Community Edition](#1-install-docker-community-edition).
-2. [Clone the Repository Locally](#2-clone-the-repository-locally).
-3. [Install IBM Cloud CLI](#3-install-ibm-cloud-cli).
-4. [Create your namespace](#4-create-your-namespace).
-5. [Build your COBOL container](#5-build-your-cobol-container).
-6. [Test your COBOL container locally](#6-test-your-cobol-container-locally).
-7. [Create and connect to IBM Cloud Kubernetes cluster](#7-create-and-connect-to-ibm-cloud-kubernetes-cluster).
-8. [Run a job on Kubernetes](#8-run-a-job-on-kubernetes).
+1. [Clone the repository locally](#1-clone-the-repository-locally) 
+2. [Create your project](#2-create-your-project)
+3. [Build your COBOL container](#3-build-your-cobol-container)
+4. [Push your COBOL container to the OpenShift on IBM Z internal registry](#4-push-your-cobol-container-to-the-openshift-on-ibm-z-internal-registry)
+5. [Run a batch job on OpenShift on IBM Z](#5-Run-a-batch-job-on-OpenShift-on-IBM-Z)
+6. [(Optional) Use a shell script to do the full installation]()
 
-### 1. Install Docker Community Edition
+**NOTE**: If you simply want to get the COBOL application up and running on OpenShift on IBM Z quickly without going through each step manually, a shell script is included in this repository to do it for you. For directions on how to use it, skip to Step 6
 
-First install the Docker-CE edition on your local workstation. There are two main editions of Docker, I’d like to take a moment to discuss the different versions here. First there is Docker Community Edition, or `docker-ce`, and Docker Enterprise Edition, or `docker-ee`. They both have advantages and are aimed at different use cases. I strongly suggest after walking through the documentation [here](https://docs.docker.com/install/overview/) to verify that Docker-CE is the correct one for your use case.
+### 1. Clone the repository locally
 
-Some of the further steps require that `docker` command do NOT use `sudo` preface, which is the default behavior after installation. To do so, log in as root user or follow the optional installations steps [here](https://docs.docker.com/engine/install/linux-postinstall/).
-
-### 2. Clone the repository locally
-
-Clone down this `git` repository on your local workstation.
+Clone down this `git` repository on your local server and change into the new directory.
 
 ```bash
-$ git clone https://github.com/IBM/kubernetes-cobol
+$ git clone https://github.com/mmondics/kubernetes-cobol
+Cloning into 'kubernetes-cobol'...
+remote: Enumerating objects: 85, done.
+remote: Counting objects: 100% (85/85), done.
+remote: Compressing objects: 100% (76/76), done.
+remote: Total 142 (delta 43), reused 6 (delta 2), pack-reused 57
+Receiving objects: 100% (142/142), 41.37 KiB | 20.68 MiB/s, done.
+Resolving deltas: 100% (65/65), done.
+
+$ cd kubernetes-cobol/
 ```
 
-### 3. Install IBM Cloud CLI
+### 2. Create your project
 
-Before continue, make sure you have an active IBM Cloud account, as well as you have the IBM Cloud CLI already working in your shell. To learn more about IBM Cloud Container Registry and sign up for an IBM Cloud account, visit [website](https://www.ibm.com/cloud/container-registry). To install the IBM CLoud CLI, follow these [instructions](https://cloud.ibm.com/docs/cli?topic=cloud-cli-getting-started).
+Next create a `project` in Red Hat OpenShift to store your container images. Log into OpenShift via the CLI, then run the following commands. 
 
-### 4. Create your namespace
-
-Next create a `namespace` in IBM Cloud Container Registry to store your Docker images. Log into IBM Cloud via the CLI, then run the following commands. We are going to call our container registry `namespace` "docker_cobol" as our example.
-
-**NOTE**: `docker_cobol` is a universal namespace, you will need to change it so SOMETHING ELSE for you. I suggest maybe your first name and `docker_cobol` for instance `jj_docker_cobol` in my case.
+**NOTE**: `<BRACKETS>` denote a variable that you should edit for your environment. Wherever you see text in `<BRACKETS>`, replace the text within the brackets and remove the brackets themselves e.g. `<OPENSHIFT_PROJECT>` will become something like `cobol-project`. 
 
 ```bash
-$ ibmcloud login
-$ ibmcloud cr namespace-add docker_cobol
-$ ibmcloud cr namespace-list | grep docker_cobol # a sanity check to make sure it was created correctly
+$ oc login --server=<OPENSHIFT_API_URL> # replace with your OpenShift cluster API address. You can find it on the overview page in the OpenShift console.
+$ oc new-project <OPENSHIFT_PROJECT>
+
 ```
 
-### 5. Build your COBOL container
+### 3. Build your COBOL container
 
-Build the Docker container on your local workstation. This will require a few steps. We will walk you through each. First change the directory of `docker/`. You'll want build your container and tag it with a meaningful tag. Using the IBM Cloud registry, you can build the container and also push it to a registry in one command. We are going to use the `namespace` that we created above, and call the container `hello_world` and label it with `v1`.
+Build the container on your local workstation. First change into the `openshift/` directory. We are going to use the `project` that we created above, call the container `openshift-cobol`, and tag it as `v1.0.0`.
+
+ **NOTE**: You will need your OpenShift Image Registry URL. You can find this by running `oc get routes -n openshift-image-registry`, or in the OpenShift console by navigating to Administrator -> Networking -> Routes and ensuring you're in the openshift-image-registry project.
+```bash
+$ cd openshift/
+$ oc login <OPENSHIFT_API_URL> \
+    --username=<OPENSHIFT_USERNAME> \
+    --password=<OPENSHIFT_PASSWORD> \ # if you do not want to enter your password in plaintext, omit this flag and you will be prompted for your password and not displayed. 
+    --insecure-skip-tls-verify=true
+$ podman login \
+    --username <OPENSHIFT_USERNAME> \
+    --password $(oc whoami -t) \
+    --tls-verify=false \
+    <OPENSHIFT_REGISTRY_URL>
+$ oc project <OPENSHIFT_PROJECT> # double check you're in the correct project
+$ buildah build-using-dockerfile \
+  -t <OPENSHIFT_REGISTRY_URL>/<OPENSHIFT_PROJECT>/openshift-cobol:v1.0.0 . # make sure to include the period at the end of the command. 
+```
+
+**NOTE**: The `buildah build-using-dockerfile` command above can take 2-10 minutes to complete, depending on your OpenShift cluster. The Dockerfile is downloading and extracting Open COBOL and compiling the `helloworld.cobol` package. 
+
+Check that your container image has been built and tagged using the `podman images` command. You should see two images returned - the one you created, named `openshift-cobol` and another from docker.io named `clefos`.
 
 ```bash
-$ cd docker/
-$ ibmcloud cr login
-$ ibmcloud cr build --tag us.icr.io/docker_cobol/hello_world:v1 ./
-Sending build context to Docker daemon   2.56kB
-Step 1/11 : FROM centos:latest
-latest: Pulling from library/centos
-8ba884070f61: Pull complete
-Digest: sha256:8d487d68857f5bc9595793279b33d082b03713341ddec91054382641d14db861
-Status: Downloaded newer image for centos:latest
- ---> 9f38484d220f
-Step 2/11 : ENV GMP_VERSION=6.0.0
- ---> Running in 2fb58cad59c6
-Removing intermediate container 2fb58cad59c6
- ---> fdbd9fe6be02
-Step 3/11 : ENV GNU_COBOL=1.1
- ---> Running in 31dc23ee79b3
-Removing intermediate container 31dc23ee79b3
- ---> 96ad047e4fd5
+$ podman images
+REPOSITORY                                                                               TAG      IMAGE ID       CREATED         SIZE
+<OPENSHIFT_REGISTRY_URL>/<OPENSHIFT_PROJECT>/openshift-cobol                             v1.0.0   4ca7207d6010   7 minutes ago   682 MB
+docker.io/s390x/clefos                                                                   latest   865aa764e034   4 months ago    174 MB
 
-[-- snip --]
-
-The push refers to repository [us.icr.io/docker_cobol/hello_world]
-f3eaacc5c5c1: Pushed
-cdf3deb1ef52: Pushed
-98290c1d657b: Pushed
-438a70293769: Pushed
-166cbcd2bc5d: Pushed
-cc201d7335e0: Pushed
-d69483a6face: Pushed
-v1: digest: sha256:9dac5ddf1210b899bf3fd75e263bc5a5854ade2141ec2abb6f3e6bf5c59b3539 size: 1785
-$
 ```
 
-### 6. Test your COBOL container locally
+### 4. Push your COBOL container to the OpenShift on IBM Z internal registry
 
-After a successful build, lets test it out on our local machine. Go ahead and run the following command to pull from your local `namespace` and run it on your local workstation.
+Now you want to push the container image you just built into the internal OpenShift registry from where it can be deployed onto the cluster. You will use the `podman push` command to do so. 
 
 ```bash
-$ ibmcloud cr login # incase you haven't already
-$ docker run us.icr.io/docker_cobol/hello_world:v1   # remember to type in the correct namespace previously created
-Unable to find image 'us.icr.io/docker_cobol/hello_world' locally
-v1: Pulling from docker_cobol/hello_world
-8ba884070f61: Pull complete
-e48b6497387f: Pull complete
-28037863ba49: Pull complete
-94e07aff83de: Pull complete
-be35421f2508: Pull complete
-70ced04e9e75: Pull complete
-92cce9b2c928: Pull complete
-Digest: sha256:9dac5ddf1210b899bf3fd75e263bc5a5854ade2141ec2abb6f3e6bf5c59b3539
-Status: Downloaded newer image for us.icr.io/docker_cobol/hello_world:v1
-Hello world!
+$ podman push --tls-verify=false \
+  <OPENSHIFT_REGISTRY_URL>/<OPENSHIFT_PROJECT>/openshift-cobol:v1.0.0
 ```
-
-Now that we have the container on our local workstation, lets run some tests against it. We'll be using some software called [InSpec](https://inspec.io). Go ahead and install the software from the official page. After that, change directory into the `inspec/` directory and edit `01-docker.rb` file in order to replace "docker_cobol" by the correct `namespace` previously created.
-
+Check that the image was successfully pushed to the OpenShift registry by running the command `oc get is` to see the new ImageStream in your project.
 ```bash
-$ cd inspec/
-$ nano 01-docker.rb   # inside the file, replace "docker_cobol" example namespace by the namespace previously created
-$ inspec exec 01-docker.rb
-Profile: tests from 01-docker.rb (tests from 01-docker.rb)
-Version: (not specified)
-Target:  local://
-
-  #<Inspec::Resources::DockerImageFilter:0x0000000004c47cd8> with repository == "ubuntu" tag == "12.04"
-     ✔  should not exist
-  #<Inspec::Resources::DockerImageFilter:0x0000000004c5ccf0> with repository == "us.icr.io/docker_cobol/hello_world" tag == "v1"
-     ✔  should exist
-  Command: `docker run us.icr.io/docker_cobol/hello_world:v1`
-     ✔  stdout should eq "Hello world!\n"
-     ✔  stderr should eq ""
-     ✔  exit_status should eq 0
-
-Test Summary: 5 successful, 0 failures, 0 skipped
-$
+$ oc get is
+NAME              IMAGE REPOSITORY                                                                         TAGS     UPDATED
+openshift-cobol   <OPENSHIFT_REGISTRY_URL>/<OPENSHIFT_PROJECT>/openshift-cobol                             v1.0.0   2 minutes ago
 ```
 
-There are a many tests you can write and very your Docker containers here, I suggest taking a look at the official documentation [here](https://www.inspec.io/docs/reference/resources/docker/). We have a few tests in the `01-docker.rb` file I'd check it to see the a few options for some sanity checks.
+### 5. Run a batch job on OpenShift on IBM Z
 
-
-### 7. Create and connect to IBM Cloud Kubernetes cluster
-
-If we now have some successful building on the IBM Cloud, running the output to see `Hello World!` We need to request a IBM Cloud Kubernetes cluster. Run the following commands to request it. You can run a "free tier" cluster here for this code pattern. This will take a few minutes, and check the status by the second command.
-
-```bash
-$ ibmcloud ks cluster create classic --name cobol_docker
-$ ibmcloud ks clusters | grep cobol_docker
-```
-
-When the cluster is complete and in `normal` state, we can connect to it. You can connect to in via the following commands, and run the second command as a sanity check.
-
-```bash
-$ ibmcloud ks cluster config --cluster cobol_docker
-OK
-The configuration for cobol_docker was downloaded successfully.
-
-Added context for cobol_docker to the current kubeconfig file.
-You can now execute 'kubectl' commands against your cluster. For example, run 'kubectl get nodes'.
-$ kubectl get nodes
-NAME            STATUS    ROLES     AGE       VERSION
-10.186.59.93    Ready     <none>    1d      v1.16.9+IKS
-```
-
-Now that you have your cluster and your container build on the IBM Cloud Container Registry we should create some keys to allow for our Kubernetes cluster to call into the Registry and request our build.
-
-```bash
-$ ibmcloud iam service-id-create docker_cobol-service-id --description "COBOL Kubernetes service"
-$ ibmcloud iam service-policy-create docker_cobol-service-id --roles Manager --service-name container-registry
-$ ibmcloud iam service-api-key-create docker_cobol-api-key docker_cobol-service-id --description "API key for COBOL Kubernetes service"
-#
-# Take note of the API Key created and put it as <API_Key> in the following command
-#
-$ kubectl create secret docker-registry docker-cobol-registry-secret \
-  --docker-server=us.icr.io \
-  --docker-username=iamapikey \
-  --docker-password=<API_Key> \
-  --docker-email=null
-```
-
-### 8. Run a job on Kubernetes
-
-Next change directory to the `job` directory, and open up the `job.yml`. You should see the `docker_cobol` and you need to edit it to your `namespace`. After this you will want to apply your batch job.
+Next change into the `job` directory, and open up the `job.yml`. You should see the `<OPENSHIFT_PROJECT>` and you need to edit it to your project name. After this you can create your batch job.
 
 ```bash
 $ cd job/
-$ nano job.yml   # remember to replace docker_cobol by the namespace previously created
-$ kubectl apply -f job.yml
-job.batch/cobol-docker-job created
+$ vi job.yml   # replace <OPENSHIFT_PROJECT> with your project name
+$ oc apply -f job.yml
+job.batch/openshift-cobol-job created
 ```
 
-Finally to verify your deployment you will want to run the following to see the `Hello World!`. The easiest way would be to run the following commands to see the pod `Completed` then run the `logs` command to verify that it has the out put we are expecting.
+This batch job has one goal - run a pod consisting of a container created from the COBOL image you built and  pushed to the OpenShift registry. 
+
+Verify that your job was created using `oc get jobs`, then view the pod that the job created using `oc get pods`. 
 
 ```bash
-$ kubectl get pods
+$ oc get job
+NAME                  COMPLETIONS   DURATION   AGE
+openshift-cobol-job   1/1           16s        18s
+
+$ oc get pods
 NAME                                  READY     STATUS      RESTARTS   AGE
-cobol-docker-job-mlggk                0/1       Completed   0          40s
-$ kubectl logs cobol-docker-job-mlggk
+openshift-cobol-job-tcgrk             0/1       Completed   0          2m21s
+```
+
+Your batch job successfully created a pod from your container image that was compiled from the `helloworld.cobol` file during the build process. To see the Hello World! message from your containerized COBOL code, run the command `oc logs pod/<POD_NAME>`
+
+**NOTE**: Pod names are randomly generated, so make sure to insert your own pod name. It will be in the form of `openshift-cobol-job-NNNNN` where the last 5 digits will be unique to your own deployment. 
+
+```bash
+$ oc logs pod/<POD_NAME>
 Hello World!
 ```
 
-# Troubleshooting
+Congratulations! You have just built a Hello World container image from COBOL, pushed it into an OpenShift on IBM Z cluster, and deployed the application using a batch job to create your pod. 
 
-### I had an error message saying that it is unable to find resource 'us.icr.io/docker_cobol/hello_world'
+### 6. Use a shell script to do the full installation
 
-Make sure you replace "docker_cobol" by your own `namespace` as discussed in the section [Create your namespace](#4-create-your-namespace).
-If the error persists, it may be related to version divergence (e.g.`Unable to find image 'us.icr.io/docker_cobol/hello_world:latest'`). In the last case, try to explicitly mention ":v1" after the resource name:
+**NOTE**: You do not need to complete this step if you completed steps 1-5. This is a simplified alternative set of directions for those who do not wish to complete the previous steps. 
 
-```bash
-$ docker run us.icr.io/docker_cobol/hello_world:v1
-```
+A shell script is provided in this repository to do everything in steps 1-5, from logging in to OpenShift to building and pushing the COBOL container image, to deploying it in the OpenShift cluster using a batch job. 
 
+Before running the shell script, you will need to edit the `env` and `job.yml` files to reflect your own OpenShift cluster. 
+
+In the `/openshift` directory, edit the `env` file, changing the values for the OpenShift API URL, the route for your OpenShift internal registry, your OpenShift credentials, and the name of the project you wish to deploy the COBOL application into. 
+
+In the `/openshift/job` directory, edit the `job.yml` file, changing the value for your OpenShift project. 
+
+Back in the `/openshift` directory, run the shell script using the command `/.full-install.sh`. 
+
+Once the script completes, you can run `oc get pods` to get your pod name, and then run `oc logs pod/<POD_NAME>` to return your Hello World! message. Refer to step 5 for more information. 
 
 <!-- keep this -->
 ## License
