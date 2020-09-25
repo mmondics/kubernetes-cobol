@@ -1,0 +1,14 @@
+# Your OpenShift cluster's API server endpoint URL
+OPENSHIFT_API_URL="<openshift_api_url>"
+
+# Your Openshift cluster's internal registry route
+OPENSHIFT_REGISTRY_URL="<registry url>"
+
+# Your OpenShift username
+OPENSHIFT_USERNAME="<username>"
+
+# The password of the user above
+OPENSHIFT_PASSWORD="<password>"
+
+# The name of the OpenShift project to use for this Cobol application
+OPENSHIFT_PROJECT="<project>"
