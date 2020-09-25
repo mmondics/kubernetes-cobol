@@ -13,7 +13,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 ##############################################################################
-FROM centos:7
+FROM s390x/clefos:latest
 
 ENV GMP_VERSION=6.0.0
 ENV GNU_COBOL=1.1
@@ -25,11 +25,11 @@ RUN mkdir /src
 
 RUN cd /src && wget https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VERSION}a.tar.xz && \
     tar xf gmp-${GMP_VERSION}a.tar.xz && \
-    cd gmp-${GMP_VERSION} && ./configure ; make ; make check ; make install
+    cd gmp-${GMP_VERSION} && ./configure ; make ; make install
 
 RUN cd /src && wget http://sourceforge.net/projects/open-cobol/files/gnu-cobol/${GNU_COBOL}/gnu-cobol-${GNU_COBOL}.tar.gz && \
     tar xvzf gnu-cobol-${GNU_COBOL}.tar.gz && \
-    cd gnu-cobol-${GNU_COBOL} && ./configure ; make ; make check ; make install
+    cd gnu-cobol-${GNU_COBOL} && ./configure ; make ; make install
 
 COPY ./helloworld.cobol /src
 
