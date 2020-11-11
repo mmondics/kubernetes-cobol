@@ -1,6 +1,6 @@
 # Running COBOL on OpenShift on IBM Z
 
-In this code pattern, we will build a container with a simple hello world COBOL application using OpenShift, Buildah, and Podman. We will build a container locally, push it to the internal OpenShift on IBM Z registry, then run create a batch job that runs the COBOL application in a pod.
+In this code pattern, we will build a container with a simple hello world COBOL application using OpenShift, Buildah, and Podman. We will build a container locally, push it to the internal OpenShift on IBM Z registry, then create a batch job that runs the COBOL application in a pod.
 
 When you have completed this code pattern, you will understand how to:
 
@@ -21,7 +21,7 @@ When you have completed this code pattern, you will understand how to:
 
 ### 1. Clone the repository locally
 
-Clone down this `git` repository on your local server and change into the new directory.
+Clone this `git` repository to your local server and change into the new directory.
 
 ```bash
 $ git clone https://github.com/mmondics/kubernetes-cobol
@@ -38,7 +38,7 @@ $ cd kubernetes-cobol/
 
 ### 2. Create your project
 
-Next create a `project` in Red Hat OpenShift to store your container images. Log into OpenShift via the CLI, then run the following commands. 
+Next create a new `project` in Red Hat OpenShift. Log into OpenShift via the CLI, then run the following commands. 
 
 **NOTE**: `<BRACKETS>` denote a variable that you should edit for your environment. Wherever you see text in `<BRACKETS>`, replace the text within the brackets and remove the brackets themselves e.g. `<OPENSHIFT_PROJECT>` will become something like `cobol-project`. 
 
@@ -107,7 +107,7 @@ $ oc apply -f job.yml
 job.batch/openshift-cobol-job created
 ```
 
-This batch job has one goal - run a pod consisting of a container created from the COBOL image you built and  pushed to the OpenShift registry. 
+This batch job has one responsibility - run a pod consisting of a container created from the COBOL image you built and pushed to the OpenShift registry. 
 
 Verify that your job was created using `oc get jobs`, then view the pod that the job created using `oc get pods`. 
 
