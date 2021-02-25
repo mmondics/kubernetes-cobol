@@ -144,7 +144,7 @@ In the `/openshift` directory, edit the `env` file, changing the values for the 
 
 In the `/openshift/job` directory, edit the `job.yml` file, changing the value for your OpenShift project. 
 
-Back in the `/openshift` directory, run the shell script using the command `/.full-install.sh`. 
+Back in the `/openshift` directory, run the shell script using the command `./full-install.sh`. 
 
 Once the script completes, you can run `oc get pods` to get your pod name, and then run `oc logs pod/<POD_NAME>` to return your Hello World! message. Refer to step 5 for more information. 
 
