@@ -13,7 +13,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 ##############################################################################
-FROM s390x/clefos:latest
+FROM mmondics/s390x-clefos:latest
 
 ENV GMP_VERSION=6.0.0
 ENV GNU_COBOL=1.1
